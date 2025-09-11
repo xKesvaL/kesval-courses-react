@@ -64,8 +64,11 @@ function App() {
               <option value="in_progress">En cours</option>
               <option value="done">Terminé</option>
             </select>
-            <button className="bg-blue-500 text-white rounded-md px-4 py-2">
-              Ajouter une tâche
+            <button
+              type="button"
+              className="bg-blue-500 text-white rounded-md px-4 py-2"
+            >
+              Ajouter
             </button>
           </form>
         </Modal>
