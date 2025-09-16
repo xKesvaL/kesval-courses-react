@@ -1,23 +1,33 @@
 import { useState } from "react";
-import { tasks as importedTasks } from "./tasks";
 import { Column } from "./Column";
 import { Modal } from "./Modal";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
 function App() {
-  const [tasks, setTasks] = useState(importedTasks);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const tasksByStatus = {};
+  const { data, isLoading, error, refetch } = useQuery({ 
+    queryKey: ['tasks'], 
+    queryFn: () => fetch('/api/tasks').then(res => res.json()) 
+  });
 
-  tasks.forEach((task) => {
-    if (tasksByStatus[task.status]) {
-      tasksByStatus[task.status].push(task);
-    } else {
-      tasksByStatus[task.status] = [task];
+  const { mutate } = useMutation({
+    mutationFn: (task) => fetch('/api/tasks', {
+      method: 'POST',
+      body: JSON.stringify(task)
+    }),
+    onSuccess: () => {
+      refetch();
     }
   });
 
-  console.log(tasksByStatus);
+  const tasks = data?.data;
+
+  const tasksByStatus = tasks?.reduce((acc, task) => {
+    acc[task.status] = acc[task.status] || [];
+    acc[task.status].push(task);
+    return acc;
+  }, {})
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -29,7 +39,7 @@ function App() {
       description: form.description,
       status: form.status,
     };
-    setTasks([...tasks, newTask]);
+    mutate(newTask);
     e.target.reset();
     setIsModalOpen(false);
   };
@@ -40,7 +50,7 @@ function App() {
         Kanban UI
       </header>
       <main className="grid grid-cols-3 gap-4 grow">
-        {Object.entries(tasksByStatus).map(([status, tasks]) => {
+        {tasksByStatus && Object.entries(tasksByStatus).map(([status, tasks]) => {
           return <Column key={status} status={status} tasks={tasks} />;
         })}
       </main>
@@ -65,7 +75,7 @@ function App() {
               <option value="done">Terminé</option>
             </select>
             <button
-              type="button"
+              type="submit"
               className="bg-blue-500 text-white rounded-md px-4 py-2"
             >
               Ajouter
