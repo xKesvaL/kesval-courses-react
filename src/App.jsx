@@ -2,11 +2,14 @@ import { useState } from "react";
 import { Column } from "./Column";
 import { Modal } from "./Modal";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { authClient } from "./lib/auth-client";
 
 function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const { data: session } = authClient.useSession();
+  console.log(session);
 
-  const { data, isLoading, error, refetch } = useQuery({ 
+  const { data, refetch } = useQuery({ 
     queryKey: ['tasks'], 
     queryFn: () => fetch('/api/tasks').then(res => res.json()) 
   });
@@ -43,6 +46,13 @@ function App() {
     e.target.reset();
     setIsModalOpen(false);
   };
+
+  const handleSignInWithGoogle = async () => {
+    await authClient.signIn.social({
+      provider: 'google',
+      callbackURL: 'http://localhost:5173/'
+    })
+  }
 
   return (
     <div className="min-h-screen flex flex-col container mx-auto py-12 gap-4">
@@ -88,6 +98,11 @@ function App() {
           className="bg-blue-500 text-white rounded-md px-4 py-2"
         >
           Ajouter une tâche
+        </button>
+        <button type="button" 
+          onClick={handleSignInWithGoogle}
+        >
+          Se connecter
         </button>
       </footer>
     </div>
