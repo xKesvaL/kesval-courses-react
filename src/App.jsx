@@ -4,6 +4,7 @@ import { Modal } from "./Modal";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { authClient } from "./lib/auth-client";
 import { socket } from "./lib/socket";
+import { queryClient } from "./main";
 
 function App() {
   socket.connect();
@@ -26,7 +27,11 @@ function App() {
     }
   });
 
-  const [messages, setMessages] = useState([]);
+  const { data: messages } = useQuery({
+    queryKey: ['messages'],
+    queryFn: () => fetch('/api/messages').then(res => res.json()),
+    select: (data) => data.data
+  });
 
   const tasks = data?.data;
 
@@ -62,15 +67,28 @@ function App() {
     e.preventDefault();
     const formData = new FormData(e.target);
     const form = Object.fromEntries(formData.entries());
-    console.log(form);
-    socket.emit('sendMessage', form.message);
+    socket.emit('sendMessage', {
+      message: form.message,
+      senderId: "jordan",
+    });
+    e.target.reset();
   }
 
   useEffect(() => {
     socket.on('receiveMessage', (message) => {
-      setMessages([...messages, message]);
+      console.log(message);
+      queryClient.setQueriesData(['messages'], (oldData) => {
+        return {
+          success: true,
+          data: [...oldData.data, message],
+        }
+      })
     });
-  }, [messages]);
+
+    return () => {
+      socket.off('receiveMessage');
+    }
+  }, []);
 
 
   return (
@@ -82,8 +100,8 @@ function App() {
         <section className="min-h-[60vh] flex flex-col gap-4">
           <h2>Chat</h2>
           <div className="shadow-xs grow flex flex-col gap-2 border rounded-md p-4">
-            {messages.map((message, index) => (
-              <div key={index}>{message}</div>
+            {messages?.map((message) => (
+              <div key={message.id}>{message.content}</div>
             ))}
             <form onSubmit={handleSendMessage} className="flex gap-2 items-center mt-auto w-full">
               <input name="message" type="text" placeholder="Message" className="w-full border rounded-md px-4 py-2 mr-2" />
