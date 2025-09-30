@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Column } from "./Column";
 import { Modal } from "./Modal";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { authClient } from "./lib/auth-client";
+import { socket } from "./lib/socket";
 
 function App() {
+  socket.connect();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { data: session } = authClient.useSession();
   console.log(session);
@@ -23,6 +25,8 @@ function App() {
       refetch();
     }
   });
+
+  const [messages, setMessages] = useState([]);
 
   const tasks = data?.data;
 
@@ -54,15 +58,44 @@ function App() {
     })
   }
 
+  const handleSendMessage = (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const form = Object.fromEntries(formData.entries());
+    console.log(form);
+    socket.emit('sendMessage', form.message);
+  }
+
+  useEffect(() => {
+    socket.on('receiveMessage', (message) => {
+      setMessages([...messages, message]);
+    });
+  }, [messages]);
+
+
   return (
     <div className="min-h-screen flex flex-col container mx-auto py-12 gap-4">
       <header className="flex justify-between items-center text-4xl font-bold">
         Kanban UI
       </header>
-      <main className="grid grid-cols-3 gap-4 grow">
+      <main>
+        <section className="min-h-[60vh] flex flex-col gap-4">
+          <h2>Chat</h2>
+          <div className="shadow-xs grow flex flex-col gap-2 border rounded-md p-4">
+            {messages.map((message, index) => (
+              <div key={index}>{message}</div>
+            ))}
+            <form onSubmit={handleSendMessage} className="flex gap-2 items-center mt-auto w-full">
+              <input name="message" type="text" placeholder="Message" className="w-full border rounded-md px-4 py-2 mr-2" />
+              <button type="submit" className="bg-blue-500 text-white rounded-md px-4 py-2">Envoyer</button>
+            </form>
+          </div>
+        </section>
+      <section className="grid grid-cols-3 gap-4 grow">
         {tasksByStatus && Object.entries(tasksByStatus).map(([status, tasks]) => {
           return <Column key={status} status={status} tasks={tasks} />;
         })}
+      </section>
       </main>
       <footer className="text-right">
         <Modal isOpen={isModalOpen} handleClose={() => setIsModalOpen(false)}>
